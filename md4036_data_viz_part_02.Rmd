@@ -1,0 +1,176 @@
+---
+title: "md4036_viz_part_02"
+author: "Margaret"
+date: "2022-10-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(ggridges)
+```
+
+Using same weather dataset
+```{r}
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728", "USC00519397", "USS0023B17S"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2017-01-01",
+    date_max = "2017-12-31") %>%
+  mutate(
+    name = recode(
+      id, 
+      USW00094728 = "CentralPark_NY", 
+      USC00519397 = "Waikiki_HA",
+      USS0023B17S = "Waterhole_WA"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) %>%
+  select(name, id, everything())
+```
+
+Lets do better this time. Labs() names the x and y axis. Title sets the overall title for the graph and the caption is at the bottom telling the person what the graph is about.
+
+```{r}
+weather_df %>%
+  ggplot(aes(x = tmin, y = tmax, color = name)) +
+  geom_point(alpha = .5) +
+  labs(
+    x = "Minimum Daily Temp(C)",
+    y = "Maximum Daily Temp (C)",
+    title = "Scatterplot of daily temp extremes", 
+    caption = "Data comes from the rnoaa package"
+  )
+```
+
+This is how you do the scale transformations. Breaks gives it axis breaks. The scale_x_continuous modified the scale on the x-axis to be -10,0. 15 instead of -10,0,10,20. Labels then labels the scale on the x axis. 
+```{r}
+weather_df %>%
+  ggplot(aes(x = tmin, y = tmax, color = name)) +
+  geom_point(alpha = .5) +
+  labs(
+    x = "Minimum Daily Temp(C)",
+    y = "Maximum Daily Temp (C)",
+    title = "Scatterplot of daily temp extremes", 
+    caption = "Data comes from the rnoaa package"
+  ) +
+  scale_x_continuous(
+    breaks = c(-10, 0, 15)
+    labels = c("-10C","0","15C")
+  )
+```
+
+Here we are going to add on scale y continuous. the trans() create a transformation on the values - here: its square roots the y axis 
+```{r}
+weather_df %>%
+  ggplot(aes(x = tmin, y = tmax, color = name)) +
+  geom_point(alpha = .5) +
+  labs(
+    x = "Minimum Daily Temp(C)",
+    y = "Maximum Daily Temp (C)",
+    title = "Scatterplot of daily temp extremes", 
+    caption = "Data comes from the rnoaa package"
+  ) +
+  scale_x_continuous(
+    breaks = c(-10, 0, 15),
+    labels = c("-10C","0","15C")) +
+  scale_y_continuous(
+    trans = "sqrt"
+  )
+```
+Now adding different colors to the chart: use scale_color_hue(). Use name = "" to also indicate to change thr colors in the legend. also can type in `viridis::scale_color_viridis`
+
+```{r}
+ggp_weather =
+weather_df %>%
+  ggplot(aes(x = tmin, y = tmax, color = name)) +
+  geom_point(alpha = .5) +
+  labs(
+    x = "Minimum Daily Temp(C)",
+    y = "Maximum Daily Temp (C)",
+    title = "Scatterplot of daily temp extremes", 
+    caption = "Data comes from the rnoaa package"
+  ) +
+  scale_color_hue(
+    name = "location",
+    h = c(100,300))
+```
+
+Lets do themes! themes help you change the look of your graph. here is how you move the legend to the bottom.
+
+```{r}
+ggp_weather +
+  theme_minimal()
+  theme(legend.position = "bottom")
+  
+```
+
+##Data in Geom()
+
+
+```{r}
+central_park_df =
+  weather_df%>%
+  filter(name == "CentralPark_NY")
+
+waikiki_df =
+  weather_df %>%
+  filter (name == "Waikiki_HA")
+
+ggplot(waikiki_df, aes(x = date, y = tmax)) +
+  geom_point() +
+  geom_line(data = central_park_df)
+
+```
+
+## Patchwork
+want to show different panels based on a variable: facet_grid(). BUT if you want to make 2 separate fundamentally diff figures: 
+```{r}
+tmax_tmin_plot = 
+  weather_df %>%
+  ggplot(aes(x = tmin, y = tmax, color = name)) +
+  geom_point()
+
+prcp_density_plot =
+  weather_df %>%
+  filter(prcp>0)%>%
+  ggplot(aes(x = prcp, fill = name)) +
+  geom_density(alpha = .5)
+
+seasonality_df =
+  weather_df %>%
+  ggplot (aes(x = date, y = tmax, color = name)) +
+  geom_point(alpha = .5) +
+  geom_smooth(se = FALSE)+
+  theme(legend.position = "none")
+
+```
+
+Lets put these 2 plots together in separate panels! Just add them together after downloading the library(pathwork) package. If you want to put one over the other, use the divide sign `/`
+
+```{r}
+library(patchwork)
+(tmax_tmin_plot + prcp_density_plot)/seasonality_df
+```
+
+##Data Manipulation
+Here, fct_relevel() helps you reorganize the graphs. Here we made it so it would display the waikiki first out of the 3 locations. 
+```{r}
+weather_df%>%
+  mutate(name = fct_relevel(name, "Waikiki_HA"))%>%
+  ggplot(aes (x = name, y = tmax))+
+  geom_boxplot()
+```
+
+You can also use fct_reorder() to order a variable in terms of tmax. This will spit out graphs in order of lowest average to highest average 
+```{r}
+weather_df%>%
+  mutate(name = fct_reorder(name, tmax))%>%
+  ggplot(aes (x = name, y = tmax))+
+  geom_boxplot()
+```
+
