@@ -59,7 +59,7 @@ weather_df %>%
     caption = "Data comes from the rnoaa package"
   ) +
   scale_x_continuous(
-    breaks = c(-10, 0, 15)
+    breaks = c(-10, 0, 15),
     labels = c("-10C","0","15C")
   )
 ```
